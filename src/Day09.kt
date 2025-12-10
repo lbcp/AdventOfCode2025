@@ -25,6 +25,38 @@ fun main() {
         return result
     }
 
+    fun floodfill(grid: MutableList<MutableList<Char>>) {
+        var startCoord = Pair(0, 0)
+        outer@for ((i, row) in grid.withIndex()) {
+            var foundWall = false
+            for ((k, col) in row.withIndex()) {
+                if (col == 'X') continue@outer
+                if (col == 'O' && !foundWall) {
+                    foundWall = true
+                } else if (col == '.' && foundWall) {
+                    startCoord = Pair(k, i)
+                }
+            }
+        }
+        val DIRECTIONS = listOf(Pair(-1, 0),
+                                Pair(1, 0),
+                                Pair(0, -1),
+                                Pair(0, 1))
+
+        val toFill = mutableListOf(startCoord)
+        val filled = mutableListOf<Pair<Int, Int>>()
+        while (toFill.isNotEmpty()) {
+            val (x, y) = toFill.removeFirst()
+            if (grid[y][x] == '.') grid[y][x] = 'O'
+            for ((xOff, yOff) in DIRECTIONS) {
+                val offsetX = x + xOff
+                val offsetY = y + yOff
+                if (0..offsetX..grid[0].size)
+            }
+        }
+    }
+
+
     fun drawGrid(input: MutableList<Pair<Long, Long>>): MutableList<MutableList<Char>> {
         var maxX = 0L
         var maxY = 0L
