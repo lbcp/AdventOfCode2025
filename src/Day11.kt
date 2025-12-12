@@ -1,4 +1,5 @@
 import kotlin.time.measureTime
+import arrow.core.MemoizedDeepRecursiveFunction
 
 fun main() {
     fun parseInput(input: List<String>): MutableMap<String, List<String>> {
@@ -12,24 +13,9 @@ fun main() {
 
     fun walk(input: MutableMap<String, List<String>>, nextNode: String) : Int {
         var result = 0
-        if ("out" in input[nextNode]!!) return result + 1
+        if ("out" in input[nextNode]!!) return 1
         for (d in input[nextNode]!!) {
             result += walk(input, d)
-        }
-        return result
-    }
-
-    fun walk2(input: MutableMap<String, List<String>>, nextNode: String, visited: MutableList<String>) : Int {
-        var result = 0
-        if ("out" in input[nextNode]!!) {
-            if ("fft" in visited && "dac" in visited) return result + 1
-            else return 0
-        }
-        for (d in input[nextNode]!!) {
-            if (d in visited) continue
-            val updated = visited.toMutableList()
-            updated.add(d)
-            result += walk2(input, d, updated)
         }
         return result
     }
@@ -40,9 +26,23 @@ fun main() {
         return result
     }
 
-    fun part2(input: MutableMap<String, List<String>>): Int {
-        var result = 0
-        for (d in input["svr"]!!) result += walk2(input, d, mutableListOf("svr"))
+    fun part2(input: MutableMap<String, List<String>>): Long {
+        var result = 0L
+        val walker = MemoizedDeepRecursiveFunction<Pair<String, String>, Int> { (start, end) ->
+            result = 0
+            when (start) {
+                end -> 1
+                in input -> input.getValue(start).sumOf { child ->
+                    callRecursive(Pair(child, end))
+                }
+                else -> 0
+            }
+        }
+        println("From server To FFT: ${walker(Pair("svr", "fft"))}")
+        println("From fft to DAC: ${walker(Pair("fft", "dac"))}")
+        println("From DAC to out: ${walker(Pair("dac", "out"))}")
+        result += walker(Pair("svr", "fft")).toLong() * walker(Pair("fft", "dac")) * walker(Pair("dac", "out"))
+
         return result
     }
 
@@ -57,7 +57,7 @@ fun main() {
 
     val testRawInput2 = readInput("Day11_Test2")
     val testInput2 = parseInput(testRawInput2)
-    check(part2(testInput2) == 2)
+    check(part2(testInput2) == 2L)
     val timePart2 = measureTime { part2(input).println() }
     println("Part 2 took $timePart2.")
 }
