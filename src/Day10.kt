@@ -109,7 +109,7 @@ fun main() {
             }
             clicks[buttons] = counts
         }
-        println("Clicks: $clicks")
+        // println("Clicks: $clicks")
         return clicks
     }
 
@@ -138,20 +138,61 @@ fun main() {
         return result
     }
 
-    fun part2(input: MutableList<Triple<Int, List<Int>, List<Int>>>): Int {
-        var result = 0
+    fun part2(input: MutableList<Triple<Int, List<Int>, List<Int>>>): Long {
+        var result = 0L
         println("Input: $input")
         // Idea: Mainly inspired by Reddit.
         // Convert jolts to pattern -> Odd is 1, even 0.
         // Find *all* solutions to get the "jolt pattern"
+        val resultsMap = mutableMapOf<List<Set<Int>>, Int>()
+        fun calcPresses(jolts: List<Int>, possibilities: MutableMap<Int, MutableList<Set<Int>>>, path: List<Set<Int>>):
+                Pair<Int, List<Set<Int>>>
+            {
+            //println("Jolts: $jolts")
+            // println("Path: $path")
+            if (jolts.all { it == 0 }) return Pair(0, path.toList())
+            val pattern = jolts.map { x -> x % 2 }
+            val binaryPattern = getBinary(pattern)
+            // println(possibilities.getOrElse(binaryPattern, { Int.MAX_VALUE }))
+            val buttonPresses = possibilities.getOrElse(binaryPattern, { emptyList() })
+            if (buttonPresses.isNotEmpty()) {
+                val flips = countFlips(buttonPresses, pattern.size)
+                //println("Flips: $flips")
+                for (flip in flips) {
+                    val presses = flip.key.size
+                    // println("Presses: $presses")
+                    val newPath = path.toMutableList()
+                    newPath.add(flip.key)
+                    val newJolts = jolts.zip(flip.value) { i, j -> (i - j) / 2 }
+
+                    //println("Old volt: $jolts")
+                    //println("Presses: ${flip.value}")
+                    //println("New volts: $newJolts")
+                    if (newJolts.any { it < 0 }) continue // abort
+
+
+                    var (result, finalPath) = calcPresses(newJolts, possibilities, newPath)
+                    if (finalPath.isEmpty()) continue
+                    result = (2 * result) + presses
+                    resultsMap[finalPath] = result
+                    // println("Result: $result")
+                    // println("NEW Resultsmap: $resultsMap")
+                }
+            } else return Pair(-999, emptyList()) // Abort
+            return Pair(-1, emptyList())
+        }
 
         input.forEach {
+            resultsMap.clear()
             println("NEW INPUT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Q")
+            println(it.third)
             val deque = ArrayDeque<Pair<Int, List<Int>>>()
             val resultList = mutableListOf<Int>()
             val possibilities = buildPossibilities(it.second)
             val joltages = it.third
-            val stopList = List(joltages.size) { 0 }
+            calcPresses(joltages, possibilities, emptyList())
+            // println("RESUKTSTKLAHKLJFNKJ $resultsMap")
+            /* val stopList = List(joltages.size) { 0 }
             println("Stops: $stopList")
             deque.add(Pair(0, joltages))
             while (!deque.isEmpty()) {
@@ -179,8 +220,21 @@ fun main() {
                 }
 
             }
+             */
 
-            println("RESUKTSTKLAHKLJFNKJ $resultList")
+            var testresult = Integer.MAX_VALUE
+            for (r in resultsMap.keys) {
+                var temp = 0
+                for (v in r.reversed()) {
+                    temp = (2 * temp) + v.size
+                }
+                println("Result: ${r.reversed()}")
+                println("Temp: $temp")
+                if (temp < testresult) testresult = temp
+            }
+            println("Test result: $testresult")
+            println("RESUKTSTKLAHKLJFNKJ $resultsMap")
+            result += testresult
         }
 
 
@@ -194,11 +248,13 @@ fun main() {
 
     check(part1(testInput) == 7)
 
-    // val rawInput = readInput("Day10")
-    //val input = parseInput(rawInput)
+    val rawInput = readInput("Day10")
+    val input = parseInput(rawInput)
     // val timePart1 = measureTime { part1(input).println() }
     // println("Part 1 took $timePart1.")
     part2(testInput)
+    part2(input).println()
+    //val timePart2 = measureTime {  }
     /*
     check(part2(testInput) == 6)
 
