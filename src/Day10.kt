@@ -1,4 +1,5 @@
 import arrow.core.getOrNone
+import arrow.core.raise.context.raise
 import kotlin.math.pow
 
 fun buildPossibilities(buttons: List<Int>): MutableMap<Int, MutableList<Set<Int>>> {
@@ -24,6 +25,32 @@ fun buildPossibilities(buttons: List<Int>): MutableMap<Int, MutableList<Set<Int>
     return patterns
 }
 
+fun countAllPossibleFlips(buttons: List<Int>, length: Int): Map<List<Int>, Set<Int>> {
+    val possibilities: Set<Set<Int>> = buttons.fold(setOf(emptySet<Int>())) { subsets, element ->
+        subsets + subsets.map { it + element }
+    }
+    val something = countFlips(possibilities.filter { it.isNotEmpty() }.toList(), length)
+    val flippedFlips = something.entries.associate {(k, v) -> v to k}
+    /*
+    val patterns = mutableMapOf<Int, MutableList<Set<Int>>>()
+    for (p in possibilities) {
+        if (p.isNotEmpty()) {
+            var result = 0
+            for (i in p) {
+                //println("i: $i = ${i.toUInt().toString(radix = 2)}")
+                result = i xor result
+                // println("xor'ed: ${result.toUInt().toString(radix = 2)}")
+            }
+            val available = patterns.getOrDefault(result, mutableListOf())
+            available.add(p)
+            patterns[result] = available
+        }
+    }
+
+     */
+    return flippedFlips
+}
+
 fun findPattern(machine: Triple<Int, List<Int>, List<Int>>) {
     val resultDict = mutableMapOf<Int, MutableList<Int>>(0 to mutableListOf<Int>())
     val (finalNumber, buttons, jolts) = machine
@@ -43,6 +70,23 @@ fun findPattern(machine: Triple<Int, List<Int>, List<Int>>) {
         resultDict += tempDict
     } while (!resultDict.containsKey(finalNumber))
     println(resultDict)
+}
+
+fun countFlips(buttonsOptions: List<Set<Int>>, length: Int): MutableMap<Set<Int>, List<Int>> {
+    // I felt so clever using binary, but now I have to deconstruct everything :-(
+    val clicks = mutableMapOf<Set<Int>, List<Int>>()
+    buttonsOptions.forEach { buttons ->
+        val counts = MutableList(length) { 0 }
+        for (button in buttons) {
+            //println(button.toUInt().toString(radix = 2))
+            for ((i, bit) in button.toUInt().toString(radix = 2).reversed().withIndex()) {
+                if (bit == '1') counts[counts.size - 1 - i] += 1
+            }
+        }
+        clicks[buttons] = counts
+    }
+    // println("Clicks: $clicks")
+    return clicks
 }
 
 fun main() {
@@ -96,22 +140,7 @@ fun main() {
         return bin
     }
 
-    fun countFlips(buttonsOptions: List<Set<Int>>, length: Int): MutableMap<Set<Int>, List<Int>> {
-        // I felt so clever using binary, but now I have to deconstruct everything :-(
-        val clicks = mutableMapOf<Set<Int>, List<Int>>()
-        buttonsOptions.forEach { buttons ->
-            val counts = MutableList(length) { 0 }
-            for (button in buttons) {
-                //println(button.toUInt().toString(radix = 2))
-                for ((i, bit) in button.toUInt().toString(radix = 2).reversed().withIndex()) {
-                    if (bit == '1') counts[counts.size - 1 - i] += 1
-                }
-            }
-            clicks[buttons] = counts
-        }
-        // println("Clicks: $clicks")
-        return clicks
-    }
+
 
     fun part1(input: MutableList<Triple<Int, List<Int>, List<Int>>>): Int {
         var result = 0
@@ -144,7 +173,7 @@ fun main() {
         // Idea: Mainly inspired by Reddit.
         // Convert jolts to pattern -> Odd is 1, even 0.
         // Find *all* solutions to get the "jolt pattern"
-        val resultsMap = mutableMapOf<List<Set<Int>>, Int>()
+        /* val resultsMap = mutableMapOf<List<Set<Int>>, Int>()
         fun calcPresses(jolts: List<Int>, possibilities: MutableMap<Int, MutableList<Set<Int>>>, path: List<Set<Int>>):
                 Pair<Int, List<Set<Int>>>
             {
@@ -157,7 +186,8 @@ fun main() {
             val buttonPresses = possibilities.getOrElse(binaryPattern, { emptyList() })
             if (buttonPresses.isNotEmpty()) {
                 val flips = countFlips(buttonPresses, pattern.size)
-                //println("Flips: $flips")
+                // println("Button presses: $buttonPresses")
+                // println("Flips: $flips")
                 for (flip in flips) {
                     val presses = flip.key.size
                     // println("Presses: $presses")
@@ -182,62 +212,64 @@ fun main() {
             return Pair(-1, emptyList())
         }
 
+         */
+
         input.forEach {
-            resultsMap.clear()
+            // resultsMap.clear()
             println("NEW INPUT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Q")
             println(it.third)
-            val deque = ArrayDeque<Pair<Int, List<Int>>>()
-            val resultList = mutableListOf<Int>()
+            val deque = ArrayDeque<Pair<List<Set<Int>>, List<Int>>>() // First: Buttons so far, Second: Next joltage
+            val resultList = mutableListOf<List<Set<Int>>>()
             val possibilities = buildPossibilities(it.second)
+            val joltagePossibilities = countAllPossibleFlips(it.second, it.third.size)
+            println(possibilities)
             val joltages = it.third
-            calcPresses(joltages, possibilities, emptyList())
-            // println("RESUKTSTKLAHKLJFNKJ $resultsMap")
-            /* val stopList = List(joltages.size) { 0 }
-            println("Stops: $stopList")
-            deque.add(Pair(0, joltages))
+            // calcPresses(joltages, possibilities, emptyList())
+            deque.add(Pair(emptyList(), joltages))
             while (!deque.isEmpty()) {
-                println("Dequing")
-                val (curCount, curJolts) = deque.removeFirst()
+                val (curPath, curJolts) = deque.removeFirst()
+                if (curJolts in joltagePossibilities) {
+                    val tempPath = curPath.toMutableList()
+                    tempPath.add(joltagePossibilities[curJolts]!!)
+                    resultList.add(tempPath)
+                }
                 val pattern = curJolts.map { x -> x % 2 }
+                if (curJolts.all { it == 2}) throw Error("WHAAA")
                 val binaryPattern = getBinary(pattern)
                 println(possibilities.getOrElse(binaryPattern, { Int.MAX_VALUE }))
                 val buttonPresses = possibilities.getOrElse(binaryPattern, { emptyList() })
                 if (buttonPresses.isNotEmpty()) {
                     val flips = countFlips(buttonPresses, pattern.size)
                     for (flip in flips) {
-                        val presses = flip.key.size + (curCount * 2)
+                        //val presses = flip.key.size + (curCount * 2)
                         val newJolts = curJolts.zip(flip.value) { i, j -> (i - j) / 2 }
-
-                        println("Old volt: $curJolts")
-                        println("Presses: ${flip.value}")
-                        println("New volts: $newJolts")
+                        val presses = curPath.toMutableList()
+                        presses.add(flip.key)
                         if (newJolts.any { it < 0 }) continue
-                        if (newJolts == stopList) {
-                            resultList.add(presses)
+                        if (newJolts.all { it == 0}) {
+                            resultList.add(presses.toList())
                         }
                         deque.add(Pair(presses, newJolts))
                     }
                 }
 
             }
-             */
+
 
             var testresult = Integer.MAX_VALUE
-            for (r in resultsMap.keys) {
+
+            for (r in resultList) {
                 var temp = 0
                 for (v in r.reversed()) {
                     temp = (2 * temp) + v.size
                 }
-                println("Result: ${r.reversed()}")
-                println("Temp: $temp")
                 if (temp < testresult) testresult = temp
+
             }
-            println("Test result: $testresult")
-            println("RESUKTSTKLAHKLJFNKJ $resultsMap")
             result += testresult
         }
 
-
+        println("Endresult: $result")
         return result
 
 
